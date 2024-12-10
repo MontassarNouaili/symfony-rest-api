@@ -2,7 +2,8 @@
 fos_rest:
   #    param_fetcher_listener:  true
   #    allowed_methods_listener:  true
-  # routing_loader: false
+  # routing_loader:
+  #   default_format: json
   #    view:
   #        view_response_listener:  true
   #    exception:
@@ -18,3 +19,4 @@ fos_rest:
           fallback_format: json,
           priorities: [json, html],
         }
+  # body_listener: true
