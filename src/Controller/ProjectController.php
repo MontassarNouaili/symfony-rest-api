@@ -176,6 +176,7 @@ class ProjectController extends AbstractFOSRestController
 
     // #[Route('/projects/{id}', name: 'project_delete', methods: ['delete'])]
     #[Rest\Delete("/projects/{id}")]
+    #[IsGranted('ROLE_USER')]
     public function delete(ManagerRegistry $doctrine, int $id): JsonResponse
     {
         $entityManager = $doctrine->getManager();
