@@ -11,6 +11,8 @@ use App\Entity\Project;
 use FOS\RestBundle\Controller\Annotations as Rest;
 use FOS\RestBundle\Controller\AbstractFOSRestController;
 use JMS\Serializer\SerializerInterface;
+use Symfony\Component\Security\Http\Attribute\IsGranted;
+use Symfony\Component\Validator\Validator\ValidatorInterface;
 
 #[Route('/api', name: 'api_')]
 class ProjectController extends AbstractFOSRestController
@@ -43,7 +45,7 @@ class ProjectController extends AbstractFOSRestController
 
     // #[Route('/projects', name: 'project_create', methods: ['post'])]
     #[Rest\Post('/projects')]
-    public function create(ManagerRegistry $doctrine, Request $request, SerializerInterface $serializer): JsonResponse
+    public function create(ManagerRegistry $doctrine, Request $request, SerializerInterface $serializer, ValidatorInterface $validator): JsonResponse
     {
         // *************************************
         // Code without serialize
@@ -64,30 +66,38 @@ class ProjectController extends AbstractFOSRestController
         // return $this->json($data);
         // *************************************
 
-        $entityManager = $doctrine->getManager();
-
         // Deserialize the request content (assuming JSON input)
         $data = $serializer->deserialize($request->getContent(), Project::class, 'json');
 
-        $dataDecoded = json_decode($request->getContent(), true);
-        if (!$dataDecoded) {
-            return new JsonResponse(['error' => 'Invalid JSON data'], 400);
-        }
+        // Validate the incoming data
+        $errors = $validator->validate($data);
 
-        // Check if the name or description is provided in the request
-        if (!isset($dataDecoded['name']) || !isset($dataDecoded['description'])) {
-            return new JsonResponse(['error' => 'Both name and description are required'], 400);
+        // Check if there are validation errors
+        if (count($errors) > 0) {
+            // Return validation errors
+            $errorMessages = [];
+            foreach ($errors as $error) {
+                $errorMessages[] = $error->getMessage();
+            }
+
+            return new JsonResponse(
+                ['errors' => $errorMessages],
+                400
+            );
         }
 
         // Persist the project to the database
+        $entityManager = $doctrine->getManager();
         $entityManager->persist($data);
         $entityManager->flush();
 
+        // Serialize the project object to JSON before sending it in the response
+        $jsonContent = $serializer->serialize($data, 'json');
         // Return the created project as a JSON response
         return new JsonResponse(
             [
                 'message' => 'Project created successfully',
-                'project' => $data,  // Include the project data under the 'project' key
+                'project' => json_decode($jsonContent),  // Include the project data under the 'project' key
             ],
             201  // HTTP status code for created resource (201)
         );
@@ -115,6 +125,7 @@ class ProjectController extends AbstractFOSRestController
     // #[Route('/projects/{id}', name: 'project_update', methods: ['put', 'patch'])]
     #[Rest\Put("/projects/{id}")]
     #[Rest\Patch("/projects/{id}")]
+    #[IsGranted('ROLE_USER')]
     public function update(ManagerRegistry $doctrine, Request $request, int $id, SerializerInterface $serializer): JsonResponse
     {
         $entityManager = $doctrine->getManager();
@@ -143,11 +154,15 @@ class ProjectController extends AbstractFOSRestController
         // Persist the changes and save them to the database
         $entityManager->flush();
 
+        // Serialize the project object to JSON
+        $jsonContent = $serializer->serialize($project, 'json');
+
         // Return the updated project as a JSON response
         return new JsonResponse(
             [
                 'message' => 'Project updated successfully',
-                'project' => $project,  // Include the project data under the 'project' key
+                'project' => json_decode($jsonContent),  // Include the project data under the 'project' key
+
             ],
             200  // HTTP status code for created resource (201)
         );

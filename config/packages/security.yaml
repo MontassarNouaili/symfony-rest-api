@@ -1,0 +1,47 @@
+security:
+  password_hashers:
+    App\Entity\User: "auto"
+    Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface:
+      algorithm: "auto"
+      cost: 15
+
+  providers:
+    app_user_provider:
+      entity:
+        class: App\Entity\User
+        property: username
+
+  firewalls:
+    login:
+      pattern: ^/api/login
+      stateless: true
+      json_login:
+        check_path: /api/login_check
+        success_handler: lexik_jwt_authentication.handler.authentication_success
+        failure_handler: lexik_jwt_authentication.handler.authentication_failure
+
+    api:
+      pattern: ^/api
+      stateless: true
+      jwt: ~
+
+    dev:
+      pattern: ^/(_(profiler|wdt)|css|images|js)/
+      security: false
+
+    main:
+      lazy: true
+      provider: app_user_provider
+      stateless: true # Ensure this is true for APIs
+
+#   access_control:
+#     # Allow access to register and login routes
+#     - { path: ^/api/register, roles: PUBLIC_ACCESS }
+#     - { path: ^/api/login, roles: PUBLIC_ACCESS }
+
+#     # Restrict access to update and delete routes
+#     - { path: ^/api/projects/update/\d+$, roles: IS_AUTHENTICATED_FULLY }
+#     - { path: ^/api/projects/delete/\d+$, roles: IS_AUTHENTICATED_FULLY }
+
+# # Allow public access to all other project routes
+# - { path: ^/api/projects/, roles: PUBLIC_ACCESS }
